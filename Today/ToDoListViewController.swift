@@ -9,10 +9,17 @@
 import UIKit
 
 class ToDoListViewController: UITableViewController {
+    let defults = UserDefaults.standard
+
     var itemArray = ["Work", "School", "Family"]
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        if let data = defults.array(forKey: "ToDoListArray") as? [String]{
+            itemArray = data
+        }
+        
         // Do any additional setup after loading the view, typically from a nib.
     }
 
@@ -47,9 +54,10 @@ class ToDoListViewController: UITableViewController {
         }
 
         let action = UIAlertAction(title: "Add ", style: .default) { _ in
-            if alert.textFields?.first?.text != ""{
-            self.itemArray.append(alert.textFields!.first!.text!)
-            self.tableView.reloadData()
+            if alert.textFields?.first?.text != "" {
+                self.itemArray.append(alert.textFields!.first!.text!)
+                self.defults.set(self.itemArray, forKey: "ToDoListArray")
+                self.tableView.reloadData()
             }
         }
         let cancel = UIAlertAction(title: "Cancel", style: .cancel)
