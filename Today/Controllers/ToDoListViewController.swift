@@ -11,15 +11,20 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     let defults = UserDefaults.standard
 
-    var itemArray = ["Work", "School", "Family"]
+    var itemArray = [Item]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        if let data = defults.array(forKey: "ToDoListArray") as? [String]{
-            itemArray = data
+
+        for i in 1...50 {
+            let item = Item(toDoListTitle: "aaa\(i)", isChecked: false)
+            itemArray.append(item)
         }
-        
+
+//        if let data = defults.array(forKey: "ToDoListItemArray") as? [Item]{
+//            itemArray = data
+//        }
+
         // Do any additional setup after loading the view, typically from a nib.
     }
 
@@ -27,8 +32,8 @@ class ToDoListViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        cell.textLabel?.text = itemArray[indexPath.row]
-
+        cell.textLabel?.text = itemArray[indexPath.row].title
+        cell.accessoryType = itemArray[indexPath.row].checked == false ? .none : .checkmark
         return cell
     }
 
@@ -40,8 +45,9 @@ class ToDoListViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        itemArray[indexPath.row].checked = !itemArray[indexPath.row].checked
         let cell = tableView.cellForRow(at: indexPath)
-        cell?.accessoryType = cell?.accessoryType == .checkmark ? .none : .checkmark
+        cell?.accessoryType = itemArray[indexPath.row].checked == false ? .none : .checkmark
     }
 
     // MARK: - Add New Items
@@ -55,8 +61,9 @@ class ToDoListViewController: UITableViewController {
 
         let action = UIAlertAction(title: "Add ", style: .default) { _ in
             if alert.textFields?.first?.text != "" {
-                self.itemArray.append(alert.textFields!.first!.text!)
-                self.defults.set(self.itemArray, forKey: "ToDoListArray")
+                let item = Item(toDoListTitle: alert.textFields!.first!.text!, isChecked: false)
+                self.itemArray.append(item)
+                // self.defults.set(self.itemArray, forKey: "ToDoListItemArray")
                 self.tableView.reloadData()
             }
         }
