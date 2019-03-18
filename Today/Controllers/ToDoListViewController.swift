@@ -13,17 +13,11 @@ class ToDoListViewController: UITableViewController {
 
     var itemArray = [Item]()
 
+    let filepath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("items.plist")
+
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        for i in 1...50 {
-            let item = Item(toDoListTitle: "aaa\(i)", isChecked: false)
-            itemArray.append(item)
-        }
-
-//        if let data = defults.array(forKey: "ToDoListItemArray") as? [Item]{
-//            itemArray = data
-//        }
+        loadData()
 
         // Do any additional setup after loading the view, typically from a nib.
     }
@@ -48,6 +42,7 @@ class ToDoListViewController: UITableViewController {
         itemArray[indexPath.row].checked = !itemArray[indexPath.row].checked
         let cell = tableView.cellForRow(at: indexPath)
         cell?.accessoryType = itemArray[indexPath.row].checked == false ? .none : .checkmark
+        saveData()
     }
 
     // MARK: - Add New Items
@@ -64,6 +59,7 @@ class ToDoListViewController: UITableViewController {
                 let item = Item(toDoListTitle: alert.textFields!.first!.text!, isChecked: false)
                 self.itemArray.append(item)
                 // self.defults.set(self.itemArray, forKey: "ToDoListItemArray")
+                self.saveData()
                 self.tableView.reloadData()
             }
         }
@@ -73,5 +69,26 @@ class ToDoListViewController: UITableViewController {
         alert.addAction(action)
 
         present(alert, animated: true)
+    }
+
+    // MARK: - Manage Data Methods
+
+    func saveData() {
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(itemArray)
+            try data.write(to: filepath!)
+        } catch {
+            print("Fail Saving data. Error : \(error)")
+        }
+    }
+
+    func loadData() {
+        let decoder = PropertyListDecoder()
+        do {
+            itemArray = try decoder.decode([Item].self, from: Data(contentsOf: filepath!))
+        } catch {
+            print("Fail loading data. Error : \(error)")
+        }
     }
 }
