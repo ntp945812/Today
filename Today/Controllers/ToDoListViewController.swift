@@ -6,19 +6,27 @@
 //  Copyright © 2019年 謝冠緯. All rights reserved.
 //
 
+import CoreData
 import UIKit
 
 class ToDoListViewController: UITableViewController {
     let defults = UserDefaults.standard
 
     var itemArray = [Item]()
+    var parentCategory: Category? {
+        didSet {
+            let request: NSFetchRequest<Item> = Item.fetchRequest()
+            loadData(with: request)
+            tableView.reloadData()
+        }
+    }
 
     let filepath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("items.plist")
 
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadData()
-
         // Do any additional setup after loading the view, typically from a nib.
     }
 
@@ -56,7 +64,9 @@ class ToDoListViewController: UITableViewController {
 
         let action = UIAlertAction(title: "Add ", style: .default) { _ in
             if alert.textFields?.first?.text != "" {
-                let item = Item(toDoListTitle: alert.textFields!.first!.text!, isChecked: false)
+                let item = Item(context: self.context)
+                item.title = alert.textFields?.first?.text
+                item.toCategory = self.parentCategory
                 self.itemArray.append(item)
                 // self.defults.set(self.itemArray, forKey: "ToDoListItemArray")
                 self.saveData()
@@ -71,24 +81,88 @@ class ToDoListViewController: UITableViewController {
         present(alert, animated: true)
     }
 
+    // MARK: -delete All Data
+
+    @IBAction func deleteAllDataButtonPushed(_ sender: UIBarButtonItem) {
+        let alert = UIAlertController(title: "Delete All Data?", message: "Do You Want To Delete All The Data?", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Yes", style: .destructive) { _ in
+            self.deleteAllData()
+            self.loadData()
+            self.tableView.reloadData()
+        }
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel)
+        alert.addAction(action)
+        alert.addAction(cancel)
+        present(alert, animated: true)
+    }
+
     // MARK: - Manage Data Methods
 
     func saveData() {
-        let encoder = PropertyListEncoder()
         do {
-            let data = try encoder.encode(itemArray)
-            try data.write(to: filepath!)
+            try context.save()
         } catch {
             print("Fail Saving data. Error : \(error)")
         }
     }
 
-    func loadData() {
-        let decoder = PropertyListDecoder()
+    func loadData(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+//        let request = NSFetchRequest<NSManagedObject>(entityName: "Item")
+//
+//        do {
+//            let result = try context.fetch(request)
+//            for data in result {
+//                print(data.value(forKey: "title") as! String)
+//                let item = Item(context: context) <- 新增了一個Item物件在context裡面，saveData時會被存下來
+//                item.title = data.value(forKey: "title") as? String
+//                item.checked = data.value(forKey: "checked") as! Bool
+//                itemArray.append(item)
+//            }
+//            print(itemArray.count)
+//
+//        } catch {
+//            print("Failed")
+//        }
+        if request.predicate == nil {
+            request.predicate = NSPredicate(format: "toCategory.name MATCHES %@", parentCategory!.name!)
+        }
         do {
-            itemArray = try decoder.decode([Item].self, from: Data(contentsOf: filepath!))
+            itemArray = try context.fetch(request)
         } catch {
             print("Fail loading data. Error : \(error)")
         }
+    }
+
+    func deleteAllData() {
+        for item in itemArray {
+            context.delete(item)
+        }
+        saveData()
+        loadData()
+    }
+}
+
+// MARK: - SearchBar Delegate Methods
+
+extension ToDoListViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ AND toCategory.name MATCHES %@", searchBar.text!, parentCategory!.name!)
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+
+        loadData(with: request)
+        tableView.reloadData()
+    }
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+
+        if searchText != "" {
+            request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ AND toCategory.name MATCHES %@", searchText, parentCategory!.name!)
+            request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        }
+
+        loadData(with: request)
+        tableView.reloadData()
     }
 }
