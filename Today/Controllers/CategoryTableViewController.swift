@@ -6,43 +6,42 @@
 //  Copyright © 2019年 謝冠緯. All rights reserved.
 //
 
-import CoreData
+import RealmSwift
 import UIKit
 
 class CategoryTableViewController: UITableViewController {
-    var categoryArray: [Category] = []
+    lazy var realm = try! Realm()
     
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var categoryResults: Results<Category>?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadData()
+        categoryResults = realm.objects(Category.self)
     }
     
     // MARK: - Table view data source
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "categoryCell", for: indexPath)
-        cell.textLabel?.text = categoryArray[indexPath.row].name
+        cell.textLabel?.text = categoryResults?[indexPath.row].name
         return cell
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categoryArray.count
+        return categoryResults?.count ?? 1
     }
     
     // MARK: - Table View delegate
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        performSegue(withIdentifier: "gotoItems", sender: categoryArray[indexPath.row])
+        performSegue(withIdentifier: "gotoItems", sender: categoryResults?[indexPath.row])
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         let destinationVC = segue.destination as! ToDoListViewController
-        if let indexPath = tableView.indexPathForSelectedRow{
-            destinationVC.parentCategory = categoryArray[indexPath.row]
+        if let indexPath = tableView.indexPathForSelectedRow {
+            destinationVC.parentCategory = categoryResults?[indexPath.row]
         }
-        
     }
     
     // MARK: - Button Pushed Methods
@@ -55,10 +54,9 @@ class CategoryTableViewController: UITableViewController {
         }
         
         let newCategoryAction = UIAlertAction(title: "Add", style: .default) { _ in
-            let category = Category(context: self.context)
-            category.name = alter.textFields?.first?.text
-            self.categoryArray.append(category)
-            self.saveData()
+            let newCategory = Category()
+            newCategory.name = alter.textFields!.first!.text!
+            self.saveData(newCategory)
             self.tableView.reloadData()
         }
         
@@ -74,7 +72,6 @@ class CategoryTableViewController: UITableViewController {
         let alert = UIAlertController(title: "Delete All Data?", message: "Do You Want To Delete All The Data?", preferredStyle: .alert)
         let action = UIAlertAction(title: "Yes", style: .destructive) { _ in
             self.deleteAllData()
-            self.loadData()
             self.tableView.reloadData()
         }
         let cancel = UIAlertAction(title: "Cancel", style: .cancel)
@@ -85,28 +82,19 @@ class CategoryTableViewController: UITableViewController {
     
     // MARK: - Data Base Methods
     
-    func saveData() {
+    func saveData(_ newCategory: Category) {
         do {
-            try context.save()
+            try realm.write {
+                realm.add(newCategory)
+            }
         } catch {
             print("Fail saving data.Error : \(error)")
         }
     }
     
-    func loadData() {
-        let requst: NSFetchRequest<Category> = Category.fetchRequest()
-        do {
-            try categoryArray = context.fetch(requst)
-        } catch {
-            print("Fail loading data.Error : \(error)")
-        }
-    }
-    
     func deleteAllData() {
-        for category in categoryArray {
-            context.delete(category)
+        try! realm.write {
+            realm.deleteAll()
         }
-        saveData()
     }
-    
 }
